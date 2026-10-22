@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QSCダッシュボード</title>
+<meta name="description" content="QSCチェックの結果を店舗別・期間別に集計した本部向けダッシュボードです。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="QSCダッシュボード">
+<meta property="og:description" content="QSCチェックの結果を店舗別・期間別に集計した本部向けダッシュボードです。">
+<meta property="og:url" content="https://okumurashingo.github.io/qsc-check/dash/">
+<meta property="og:image" content="https://okumurashingo.github.io/qsc-check/ogp-dash.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#f4f3f8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="QSCダッシュボード">
+<link rel="icon" href="https://okumurashingo.github.io/qsc-check/icon.png">
+<link rel="apple-touch-icon" href="https://okumurashingo.github.io/qsc-check/icon.png">
+<script>window.QSC_API = "https://script.google.com/macros/s/AKfycbzXyrNOEHdwaWdZL5R3J3rVG_j1vYLn5Q-k8yh9EE2xHBfWKIU8v3W6FtbXgwU02k0/exec";</script>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap">
+<style>
+/* 口コミダッシュボードと同じ骨格：上に絞り込み、KPI4枚、課題、推移、店舗表、記録の読み物 */
+:root{
+--bg:#f4f3f8; --card:#ffffff; --line:#e7e4ef; --line2:#f1eff6; --ink:#26232e; --muted:#77738a; --faint:#a6a2b5;
+--accent:#5a3e8e; --accent-soft:#ece7f6; --accent-mid:#a593cc;
+--good:#2f7a4a; --good-soft:#e3f1e8; --bad:#b3362f; --bad-soft:#f9e4e2; --warn:#a46a00; --warn-soft:#fbf0d9; --gold:#d4a23a;
+--font:"Noto Sans JP","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--font);font-size:14px;line-height:1.6;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.num{font-variant-numeric:tabular-nums}
+header.top{padding-block:22px 6px}
+.top .row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.eyebrow{font-size:12px;color:var(--muted)}
+h1{font-size:26px;font-weight:800;letter-spacing:.01em;text-wrap:balance}
+.stamp{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)}
+.btn{background:var(--accent);color:#fff;font-weight:700;padding:9px 16px;border-radius:8px}
+.btn:disabled{opacity:.6}
+.filters{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding-block:12px;border-bottom:1px solid var(--line)}
+.filters .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sel{min-width:220px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{padding:9px 13px;font-size:13px;color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.dates{display:flex;align-items:center;gap:6px}
+.dates input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.ctx{font-size:12px;color:var(--muted);padding-block:12px 4px}
+main{padding-block:8px 60px;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.card h2{font-size:16px;font-weight:700;display:flex;align-items:baseline;gap:8px}
+.card h2 small{font-size:12px;font-weight:400;color:var(--muted)}
+.chead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.chead .note{font-size:12px;color:var(--muted)}
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.g73{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
+.g37{grid-template-columns:minmax(0,1fr) minmax(0,1.9fr)}
+@media (max-width:900px){.filters{position:static}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2,.g73,.g37{grid-template-columns:1fr}}
+.kpi .lbl{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:34px;font-weight:800;line-height:1.2;margin-top:4px}
+.kpi .v small{font-size:14px;font-weight:500;color:var(--muted);margin-left:2px}
+.kpi .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.up{color:var(--good);font-weight:700}.down{color:var(--bad);font-weight:700}
+.cols2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}
+@media (max-width:760px){.cols2{grid-template-columns:1fr}}
+.subh{font-size:13px;font-weight:700;margin-bottom:8px}
+.subh.g{color:var(--good)}.subh.b{color:var(--bad)}
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar{display:grid;grid-template-columns:minmax(0,11em) minmax(40px,1fr) 4.6em;gap:12px;align-items:center;font-size:13px}
+.bar .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .tr{height:9px;border-radius:5px;background:var(--line2);overflow:hidden}
+.bar .tr i{display:block;height:100%;border-radius:5px}
+.bar .vv{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}
+.bar.wide{grid-template-columns:minmax(0,16em) minmax(40px,1fr) 5.4em}
+.empty{color:var(--faint);font-size:13px;padding:6px 0}
+.chart svg{width:100%;height:auto;display:block}
+.chart text{font-size:11px;fill:var(--muted);font-family:var(--font)}
+.legend{display:flex;justify-content:center;gap:16px;font-size:12px;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:12px;color:var(--muted);font-weight:500;text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:11px 10px;border-bottom:1px solid var(--line2);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#faf9fd}
+tbody tr.on{background:var(--accent-soft)}
+td.lo{color:var(--bad);font-weight:700}
+.pill{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.j0{background:var(--good-soft);color:var(--good)}.j1{background:#eef6f0;color:#3d8a57}.j2{background:var(--warn-soft);color:var(--warn)}.j3{background:var(--bad-soft);color:var(--bad)}
+.rec{border:1px solid var(--line);border-left:4px solid var(--accent-mid);border-radius:10px;padding:14px 16px}
+.rec.bad{border-left-color:var(--bad)}.rec.warn{border-left-color:var(--gold)}.rec.good{border-left-color:var(--good)}
+.rec + .rec{margin-top:12px}
+.rhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;font-size:13px;color:var(--muted)}
+.rhead b{font-size:15px;color:var(--ink)}
+.rhead .score{font-weight:800;font-size:15px}
+.ng{margin-top:8px;display:flex;flex-direction:column;gap:5px;font-size:13.5px}
+.ng li{list-style:none;padding-left:1.3em;text-indent:-1.3em}
+.ng li::before{content:"✕";color:var(--bad);font-weight:700;margin-right:.4em}
+.ng .path{font-size:11px;color:var(--faint);margin-right:6px}
+.ng .c{display:block;text-indent:0;color:var(--bad);font-size:12.5px}
+.rnote{margin-top:8px;font-size:13px;color:var(--ink);background:var(--bg);border-radius:8px;padding:8px 10px}
+.rfoot{margin-top:8px;font-size:12px}
+.rfoot a{color:var(--accent)}
+.more{display:block;margin:14px auto 0;color:var(--accent);font-weight:700;padding:8px 16px}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 14px;font-size:13px}
+.gate{max-width:360px;margin:80px auto;text-align:center}
+.gate input{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;margin:14px 0;background:var(--card);font-size:16px}
+.gate .err{color:var(--bad);font-size:13px;min-height:1.4em}
+.loading{color:var(--muted);text-align:center;padding:60px 0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<header class="top wrap">
+<div class="row">
+<div><div class="eyebrow">QSCチェック 本部向け</div><h1>QSCチェック ダッシュボード</h1></div>
+<div class="stamp"><span id="stamp" class="num">集計：--</span><button class="btn" id="reload">最新にする</button></div>
+</div>
+</header>
+<div class="filters"><div class="wrap">
+<div class="row">
+<select class="sel" id="fStore" aria-label="店舗"></select>
+<div class="seg" id="fPreset" role="group" aria-label="期間">
+<button data-p="m0">今月</button><button data-p="m1">先月</button><button data-p="3m">3ヶ月</button><button data-p="6m">6ヶ月</button><button data-p="1y">1年</button><button data-p="all">全期間</button>
+</div>
+<div class="dates"><input type="date" id="fFrom" aria-label="開始日"><span>〜</span><input type="date" id="fTo" aria-label="終了日"></div>
+</div>
+</div></div>
+<div class="wrap"><div class="ctx num" id="ctx"></div></div>
+<main class="wrap" id="main"><div class="loading">集計を読み込み中…</div></main>
+<script>
+const IS_GAS = typeof google !== 'undefined' && google.script && google.script.run;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct = v => v == null ? '--' : (Math.round(v * 1000) / 10).toFixed(1);
+let D = null, F = {store: 'all', preset: '3m', from: '', to: '', rf: 'ng', limit: 20}, PIN = '';
+try{ PIN = sessionStorage.getItem('qsc_dash_pin') || ''; }catch(e){}
+function api(name, ...a){
+if (IS_GAS) return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej)[name](...a));
+if (window.QSC_API) return fetch(window.QSC_API, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify({fn: name, args: a})})
+.then(r => { if (!r.ok) throw new Error('通信エラー（' + r.status + '）'); return r.json(); })
+.then(j => { if (!j.ok) throw new Error(j.error || 'エラーが起きました'); return j.result; });
+return new Promise(res => setTimeout(() => res(demoData()), 200));
+}
+/* ===== 日付 ===== */
+const ymd = d => { const z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };
+const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const days = (a, b) => Math.round((parse(b) - parse(a)) / 864e5) + 1;
+const slash = s => s.replace(/-/g, '/');
+function presetRange(p){
+const t = new Date(), today = ymd(t);
+const first = k => ymd(new Date(t.getFullYear(), t.getMonth() - k, 1));
+if (p === 'm0') return [first(0), today];
+if (p === 'm1') return [first(1), ymd(new Date(t.getFullYear(), t.getMonth(), 0))];
+if (p === '3m') return [first(2), today];
+if (p === '6m') return [first(5), today];
+if (p === '1y') return [first(11), today];
+const min = D.recs.reduce((m, r) => r.date && r.date < m ? r.date : m, today);
+return [min, today];
+}
+/* ===== 判定 ===== */
+function judgeIdx(v){ if (v == null) return -1; for (let i = 0; i < D.judge.length; i++) if (v >= D.judge[i][0]) return i; return D.judge.length - 1; }
+const judgePill = v => { const i = judgeIdx(v); return i < 0 ? '' : `<span class="pill j${i}">${esc(D.judge[i][1])}</span>`; };
+const avg = a => { const b = a.filter(x => x != null && !isNaN(x)); return b.length ? b.reduce((s, x) => s + x, 0) / b.length : null; };
+const shortCat = c => { const a = String(c).split(/[＝=]/)[0]; return a.length <= 3 ? a : String(c); };
+const color = v => v == null ? 'var(--line)' : v >= D.judge[0][0] ? 'var(--good)' : v >= D.judge[1][0] ? '#5f9e72' : v >= D.judge[2][0] ? 'var(--gold)' : 'var(--bad)';
+/* ===== 絞り込み ===== */
+function inStore(r){
+if (F.store === 'all') return true;
+if (F.store.startsWith('g:')) return r.genre === F.store.slice(2);
+return r.store === F.store;
+}
+const pick = (from, to) => D.recs.filter(r => r.date >= from && r.date <= to && inStore(r));
+function render(){
+const recs = pick(F.from, F.to);
+const n = days(F.from, F.to);
+const pTo = ymd(new Date(parse(F.from) - 864e5)), pFrom = ymd(new Date(parse(F.from) - n * 864e5));
+const prev = pick(pFrom, pTo);
+const label = F.store === 'all' ? '全店舗' : F.store.startsWith('g:') ? F.store.slice(2) + '（業態）' : F.store;
+$('ctx').textContent = `${label} / ${slash(F.from)}〜${slash(F.to)}（${n}日間）`;
+const ids = new Set(recs.map(r => r.id));
+const cats = D.cats.filter(c => ids.has(c.id));
+const catNames = []; D.cats.forEach(c => { if (!catNames.includes(c.cat)) catNames.push(c.cat); });
+let h = '';
+if (D.demo) h += '<div class="banner">デモデータで表示しています。本番ではスプシに送られた点検結果がここに集計されます。</div>';
+// KPI
+const avgR = avg(recs.map(r => r.rate)), pAvg = avg(prev.map(r => r.rate));
+const ngPer = avg(recs.map(r => r.fail)), pNg = avg(prev.map(r => r.fail));
+const byStore = {}; recs.forEach(r => (byStore[r.store] = byStore[r.store] || []).push(r));
+const storeAvgs = Object.keys(byStore).map(s => avg(byStore[s].map(r => r.rate)));
+const weak = storeAvgs.filter(v => v != null && v < D.judge[1][0]).length;
+const delta = (a, b, fmt, invert) => {
+if (a == null || b == null) return `前の${n}日間 ${b == null ? 'なし' : fmt(b)}`;
+const d = a - b, good = invert ? d <= 0 : d >= 0;
+return `前の${n}日間 ${fmt(b)} <span class="${good ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'}${fmt(Math.abs(d))}</span>`;
+};
+h += `<div class="grid g4">
+<div class="card kpi"><div class="lbl">点検数</div><div class="v num">${recs.length}<small>件</small></div><div class="sub">${delta(recs.length, prev.length, v => v + '件')}</div></div>
+<div class="card kpi"><div class="lbl">平均得点率</div><div class="v num" style="color:${color(avgR)}">${pct(avgR)}<small>%</small></div><div class="sub">${delta(avgR, pAvg, v => pct(v) + 'pt')}</div></div>
+<div class="card kpi"><div class="lbl">1回あたりの✕</div><div class="v num">${ngPer == null ? '--' : ngPer.toFixed(1)}<small>個</small></div><div class="sub">${delta(ngPer, pNg, v => v.toFixed(1) + '個', true)}</div></div>
+<div class="card kpi"><div class="lbl">要注意・要改善の店舗</div><div class="v num" style="color:${weak ? 'var(--bad)' : 'var(--ink)'}">${weak}<small>店</small></div><div class="sub">点検した ${Object.keys(byStore).length}店のうち（平均${Math.round(D.judge[1][0] * 100)}%未満）</div></div>
+</div>`;
+// 課題
+const catRows = catNames.map(cn => ({cn, v: avg(cats.filter(c => c.cat === cn).map(c => c.rate)), n: cats.filter(c => c.cat === cn).length})).filter(x => x.n);
+const it = {};
+recs.forEach(r => {
+const res = D.res[r.id]; if (!res) return;
+res.p.forEach(i => { (it[i] = it[i] || {ng: 0, n: 0, st: {}}).n++; });
+res.f.forEach(([i]) => { const o = (it[i] = it[i] || {ng: 0, n: 0, st: {}}); o.n++; o.ng++; o.st[r.store] = (o.st[r.store] || 0) + 1; });
+});
+const ngTop = Object.keys(it).map(i => ({i: +i, ...it[i]})).filter(o => o.ng).sort((a, b) => b.ng - a.ng || b.ng / b.n - a.ng / a.n).slice(0, 10);
+const okTop = Object.keys(it).map(i => ({i: +i, ...it[i]})).filter(o => o.n >= 2).sort((a, b) => (a.ng / a.n) - (b.ng / b.n) || b.n - a.n).slice(0, 6);
+const maxNg = Math.max(1, ...ngTop.map(o => o.ng));
+h += `<section class="card"><div class="chead"><h2>カテゴリ別スコアと課題</h2><span class="note num">点検 ${recs.length}件から</span></div>
+<div class="cols2">
+<div><div class="subh g">カテゴリ別の平均得点率</div><div class="bars">${catRows.length ? catRows.map(x => `<div class="bar"><span class="nm">${esc(x.cn)}</span><span class="tr"><i style="width:${(x.v ?? 0) * 100}%;background:${color(x.v)}"></i></span><span class="vv">${pct(x.v)}%</span></div>`).join('') : '<div class="empty">この期間の点検はまだありません</div>'}</div>
+${okTop.length ? `<div class="subh g" style="margin-top:18px">よくできている項目</div><div class="bars">${okTop.map(o => `<div class="bar wide"><span class="nm" title="${esc(D.items[o.i][3])}">${esc(D.items[o.i][3])}</span><span class="tr"><i style="width:${(1 - o.ng / o.n) * 100}%;background:var(--good)"></i></span><span class="vv">${Math.round((1 - o.ng / o.n) * 100)}%</span></div>`).join('')}</div>` : ''}
+</div>
+<div><div class="subh b">✕が多い項目（よく指摘されていること）</div><div class="bars">${ngTop.length ? ngTop.map(o => `<div class="bar wide"><span class="nm" title="${esc(D.items[o.i][3])}">${esc(D.items[o.i][3])}</span><span class="tr" style="background:var(--bad-soft)"><i style="width:${o.ng / maxNg * 100}%;background:var(--bad)"></i></span><span class="vv">${o.ng}件</span></div>`).join('') : '<div class="empty">✕はありません</div>'}</div>
+${ngTop.length ? `<p class="note" style="font-size:12px;color:var(--muted);margin-top:10px">いちばん多いのは「${esc(D.items[ngTop[0].i][3])}」。${Object.keys(ngTop[0].st).length}店で${ngTop[0].ng}回指摘されています。</p>` : ''}
+</div>
+</div></section>`;
+// 推移 + 判定分布
+const months = []; { let d = parse(F.from); d = new Date(d.getFullYear(), d.getMonth(), 1); const end = parse(F.to); while (d <= end){ months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); d = new Date(d.getFullYear(), d.getMonth() + 1, 1); } }
+const mData = months.map(m => { const rs = recs.filter(r => r.date.slice(0, 7) === m); return {m, n: rs.length, v: avg(rs.map(r => r.rate))}; });
+const dist = D.judge.map((j, i) => ({j, n: recs.filter(r => judgeIdx(r.rate) === i).length}));
+const maxD = Math.max(1, ...dist.map(x => x.n));
+h += `<div class="grid g73">
+<section class="card"><div class="chead"><h2>点検数と平均得点率の推移</h2><span class="note">月ごと</span></div>
+<div class="legend"><span><i style="background:var(--gold)"></i>平均得点率</span><span><i style="background:var(--accent-mid)"></i>点検数</span></div>
+<div class="chart">${trendSVG(mData)}</div></section>
+<section class="card"><div class="chead"><h2>判定の分布</h2><span class="note">点検1回ごと</span></div>
+<div class="bars">${dist.map((x, i) => `<div class="bar"><span class="nm"><span class="pill j${i}">${esc(x.j[1])}</span></span><span class="tr"><i style="width:${x.n / maxD * 100}%;background:var(--accent)"></i></span><span class="vv">${x.n}（${recs.length ? Math.round(x.n / recs.length * 100) : 0}%）</span></div>`).join('')}</div>
+<p style="font-size:12px;color:var(--muted);margin-top:12px">${D.judge.map(j => `${esc(j[1])}${j[0] ? ` ${Math.round(j[0] * 100)}%以上` : ''}`).join('／')}</p></section>
+</div>`;
+// チェック者 + 店舗表
+const byC = {}; recs.forEach(r => (byC[r.checker || '（未入力）'] = byC[r.checker || '（未入力）'] || []).push(r));
+const cRows = Object.keys(byC).map(c => ({c, n: byC[c].length, v: avg(byC[c].map(r => r.rate))})).sort((a, b) => b.n - a.n);
+const sRows = Object.keys(byStore).map(s => {
+const rs = byStore[s].slice().sort((a, b) => a.date < b.date ? -1 : 1);
+const sid = new Set(rs.map(r => r.id));
+return {s, n: rs.length, v: avg(rs.map(r => r.rate)), last: rs[rs.length - 1].date, cats: catNames.map(cn => avg(D.cats.filter(c => sid.has(c.id) && c.cat === cn).map(c => c.rate)))};
+}).sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
+h += `<div class="grid g37">
+<section class="card"><div class="chead"><h2>チェック者別</h2><span class="note">点の甘い・辛いの目安</span></div>
+<div class="bars">${cRows.length ? cRows.map(x => `<div class="bar"><span class="nm">${esc(x.c)} <span style="color:var(--faint);font-size:11px">${x.n}件</span></span><span class="tr"><i style="width:${(x.v ?? 0) * 100}%;background:var(--accent)"></i></span><span class="vv">${pct(x.v)}%</span></div>`).join('') : '<div class="empty">まだありません</div>'}</div>
+${cRows.length > 1 && avgR != null ? `<p style="font-size:12px;color:var(--muted);margin-top:12px">全体平均 ${pct(avgR)}% より5pt以上高い人は甘め、低い人は辛めの可能性があります。</p>` : ''}</section>
+<section class="card"><div class="chead"><h2>店舗ごとの評価</h2><span class="note">行をクリックでその店舗に切り替え</span></div>
+<div class="tblwrap"><table><thead><tr><th>店舗</th><th>点検数</th><th>平均</th><th>判定</th>${catNames.map(c => `<th>${esc(shortCat(c))}</th>`).join('')}<th>最新</th></tr></thead><tbody>
+${sRows.length ? sRows.map(x => `<tr data-store="${esc(x.s)}" class="${F.store === x.s ? 'on' : ''}"><td>${esc(x.s)}</td><td>${x.n}</td><td class="${x.v != null && x.v < D.judge[1][0] ? 'lo' : ''}">${pct(x.v)}%</td><td>${judgePill(x.v)}</td>${x.cats.map(v => `<td class="${v != null && v < D.judge[1][0] ? 'lo' : ''}">${v == null ? '--' : pct(v)}</td>`).join('')}<td>${slash(x.last).slice(5)}</td></tr>`).join('') : `<tr><td colspan="${5 + catNames.length}" class="empty">この期間の点検はまだありません</td></tr>`}
+</tbody></table></div></section>
+</div>`;
+// 記録
+const fil = {ng: r => r.fail > 0, low: r => r.rate != null && r.rate < D.judge[1][0], all: () => true}[F.rf];
+const list = recs.filter(fil).sort((a, b) => (b.date + b.sent) < (a.date + a.sent) ? -1 : 1);
+h += `<section class="card"><div class="chead"><h2>点検結果を読む <small class="num">${list.length}件（新しい順）</small></h2>
+<div class="seg" id="fRec"><button data-rf="ng" aria-pressed="${F.rf === 'ng'}">✕あり</button><button data-rf="low" aria-pressed="${F.rf === 'low'}">要注意以下</button><button data-rf="all" aria-pressed="${F.rf === 'all'}">すべて</button></div></div>
+${list.length ? list.slice(0, F.limit).map(recCard).join('') : '<div class="empty">該当する点検はありません</div>'}
+${list.length > F.limit ? `<button class="more" id="more">さらに表示（残り${list.length - F.limit}件）</button>` : ''}</section>`;
+$('main').innerHTML = h;
+}
+function recCard(r){
+const res = D.res[r.id] || {f: []};
+const ji = judgeIdx(r.rate), cls = ['good', 'good', 'warn', 'bad'][ji] || '';
+return `<article class="rec ${cls}"><div class="rhead"><b>${esc(r.store)}</b><span class="score num" style="color:${color(r.rate)}">${pct(r.rate)}%</span>${judgePill(r.rate)}<span class="num">${slash(r.date)}</span><span>${esc(r.checker || '')}</span><span class="num">○${r.pass} ✕${r.fail}${r.open ? ` 未${r.open}` : ''}</span></div>
+${res.f.length ? `<ul class="ng">${res.f.map(([i, c]) => `<li><span class="path">${esc(shortCat(D.items[i][1]))}／${esc(D.items[i][2])}</span>${esc(D.items[i][3])}${c ? `<span class="c">→ ${esc(c)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+${r.note ? `<div class="rnote">総評：${esc(r.note)}</div>` : ''}
+${r.folder ? `<div class="rfoot"><a href="${esc(r.folder)}" target="_blank" rel="noopener">写真フォルダを開く</a></div>` : ''}</article>`;
+}
+function trendSVG(m){
+const W = 640, H = 230, L = 40, R = 40, T = 14, B = 30, w = W - L - R, h = H - T - B;
+if (!m.length) return '';
+const maxN = Math.max(4, ...m.map(x => x.n)); const stepN = Math.ceil(maxN / 4);
+const top = stepN * 4, bw = Math.min(70, w / m.length * 0.62);
+const x = i => L + w * (i + 0.5) / m.length, yN = v => T + h - v / top * h, yR = v => T + h - v * h;
+let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="月ごとの点検数と平均得点率">`;
+for (let k = 0; k <= 4; k++){ const y = T + h - k / 4 * h; s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="var(--line2)"/><text x="${L - 6}" y="${y + 4}" text-anchor="end">${stepN * k}</text><text x="${W - R + 6}" y="${y + 4}">${k * 25}%</text>`; }
+m.forEach((d, i) => { s += `<rect x="${x(i) - bw / 2}" y="${yN(d.n)}" width="${bw}" height="${T + h - yN(d.n)}" rx="3" fill="var(--accent-mid)"/><text x="${x(i)}" y="${H - 10}" text-anchor="middle">${d.m.slice(0, 4)}/${+d.m.slice(5)}</text>`; });
+const pts = m.map((d, i) => d.v == null ? null : [x(i), yR(d.v)]).filter(Boolean);
+if (pts.length > 1) s += `<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="var(--gold)" stroke-width="2.5"/>`;
+pts.forEach(p => { s += `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="var(--gold)"/>`; });
+m.forEach((d, i) => { if (d.v != null) s += `<text x="${x(i)}" y="${yR(d.v) - 9}" text-anchor="middle" style="fill:var(--ink);font-weight:700">${pct(d.v)}</text>`; });
+return s + '</svg>';
+}
+/* ===== 操作 ===== */
+function fillStores(){
+const stores = [...new Set(D.recs.map(r => r.store))];
+const g = {}; D.recs.forEach(r => { (g[r.genre || 'その他'] = g[r.genre || 'その他'] || new Set()).add(r.store); });
+let h = '<option value="all">全店舗</option>';
+Object.keys(g).forEach(k => { h += `<optgroup label="${esc(k)}"><option value="g:${esc(k)}">${esc(k)}（業態まとめ）</option>${[...g[k]].map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('')}</optgroup>`; });
+$('fStore').innerHTML = h; $('fStore').value = stores.includes(F.store) || F.store === 'all' || F.store.startsWith('g:') ? F.store : 'all';
+}
+function setPreset(p){
+F.preset = p; [F.from, F.to] = presetRange(p); F.limit = 20;
+$('fFrom').value = F.from; $('fTo').value = F.to;
+document.querySelectorAll('#fPreset button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === p));
+render();
+}
+$('fPreset').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setPreset(b.dataset.p); });
+['fFrom', 'fTo'].forEach(id => $(id).addEventListener('change', () => {
+if (!$('fFrom').value || !$('fTo').value) return;
+F.from = $('fFrom').value; F.to = $('fTo').value; if (F.from > F.to) [F.from, F.to] = [F.to, F.from];
+document.querySelectorAll('#fPreset button').forEach(b => b.setAttribute('aria-pressed', 'false')); F.limit = 20; render();
+}));
+$('fStore').addEventListener('change', e => { F.store = e.target.value; F.limit = 20; render(); });
+$('main').addEventListener('click', e => {
+const tr = e.target.closest('tr[data-store]'); if (tr){ F.store = F.store === tr.dataset.store ? 'all' : tr.dataset.store; $('fStore').value = F.store; render(); window.scrollTo({top: 0, behavior: 'smooth'}); return; }
+const rf = e.target.closest('[data-rf]'); if (rf){ F.rf = rf.dataset.rf; F.limit = 20; render(); return; }
+if (e.target.id === 'more'){ F.limit += 20; render(); }
+});
+$('reload').addEventListener('click', () => load(true));
+async function load(again){
+const btn = $('reload'); btn.disabled = true; btn.textContent = '読み込み中…';
+try{
+const res = await api('getDashData', PIN);
+if (res && res.needPin){ showGate(res.wrong); return; }
+D = normalize(res);
+$('stamp').textContent = '集計：' + D.now;
+fillStores();
+if (!again || !F.from) setPreset(F.preset); else render();
+}catch(e){
+$('main').innerHTML = `<div class="card">読み込めませんでした。少し待ってから「最新にする」を押してください。<br><small style="color:var(--muted)">${esc(e && e.message)}</small></div>`;
+}finally{ btn.disabled = false; btn.textContent = '最新にする'; }
+}
+function normalize(d){
+return {now: d.now, demo: !!d.demo, judge: d.judge, items: d.items, res: d.res,
+recs: d.recs.map(a => ({id: a[0], date: a[1], store: a[2], genre: a[3], brand: a[4], checker: a[5], rate: a[6], pass: a[7], fail: a[8], na: a[9], open: a[10], note: a[11], folder: a[12], sent: a[13] || ''})).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.date)),
+cats: d.cats.map(a => ({id: a[0], cat: a[1], rate: a[2]}))};
+}
+function showGate(wrong){
+$('main').innerHTML = `<form class="gate card" id="gate"><h2>閲覧用PINを入れてください</h2><input id="gpin" type="password" inputmode="numeric" autocomplete="off" aria-label="閲覧用PIN"><div class="err">${wrong ? 'PINが違います' : ''}</div><button class="btn" style="width:100%">表示する</button></form>`;
+$('gate').addEventListener('submit', e => { e.preventDefault(); PIN = $('gpin').value; try{ sessionStorage.setItem('qsc_dash_pin', PIN); }catch(_){} load(); });
+$('gpin').focus();
+}
+/* ===== デモ用のデータ（スプシ未接続のプレビュー時だけ） ===== */
+function demoData(){
+return {now: '', demo: true, judge: [[0.9, '◎ 優良'], [0.8, '○ 合格'], [0.7, '△ 要注意'], [0, '✕ 要改善']], items: [], res: {}, recs: [], cats: []};
+}
+load();
+</script>
+</body>
+</html>
