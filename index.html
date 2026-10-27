@@ -57,9 +57,12 @@ button{cursor:pointer;background:none;border:0}
 .hstore b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hstore small{font-size:10.5px;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hstore .ph{color:rgba(255,255,255,.5)}
-.hstore .chg{flex:none;font-size:11px;color:var(--pink);font-weight:700}
-.hstore.empty{border-color:var(--pink);border-style:dashed}
-.hstore.empty .ph{color:#fff}
+.hstore .ph{display:flex;align-items:center;gap:6px}
+.hstore .ph::before{content:"";width:14px;height:14px;flex:none;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 9l1.5-5h15L21 9'/%3E%3Cpath d='M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z'/%3E%3Cpath d='M5 13v7h14v-7'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 9l1.5-5h15L21 9'/%3E%3Cpath d='M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z'/%3E%3Cpath d='M5 13v7h14v-7'/%3E%3C/svg%3E") center/contain no-repeat}
+.hstore .chg{flex:none;font-size:11px;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:2px 10px}
+.hstore.empty .ph{color:#fff;font-weight:600}
+.hstore.empty .chg{background:var(--pink);border-color:var(--pink)}
+.hstore:hover{background:rgba(255,255,255,.16)}
 @media (max-width:599px){.header-info{grid-template-columns:1fr 1fr}.hstore{grid-column:1/-1}}
 /* Score bar + tabs (sticky) */
 .stick{position:sticky;top:env(safe-area-inset-top,0px);z-index:99}
@@ -921,6 +924,7 @@ toast('オフラインのため前回の項目で表示しています');
 }
 (async function boot(){
 S = LS.get('qsc_draft_v1', null) || newDraft();
+if (S.meta && S.meta.date !== today()){ S.meta.date = today(); save(); }  // 開いた日の日付に合わせる
 try{ await loadConfig(); }
 catch(e){ $('main').innerHTML = `<div class="empty-card">項目を読み込めませんでした。電波を確認して再読み込みしてください。<br><small>${esc(e && e.message)}</small></div>`; return; }
 TAB = cats().find(c => visible(c.cat).length)?.cat || cats()[0]?.cat || '__sum';
