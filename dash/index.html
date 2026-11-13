@@ -118,6 +118,8 @@ main{padding-block:8px 60px;display:flex;flex-direction:column;gap:16px}
 .bar.wide .vv .h{color:var(--gold);margin-left:4px}
 .bar .tr .hf{display:inline-block;height:100%;background:var(--gold)}
 .ng li.hf::before{content:"△";color:var(--gold)}
+.ng li.cm::before{content:"○";color:var(--good)}
+.ng .c.cm{color:var(--accent-d)}
 .ng .c.hf{color:var(--warn)}
 .empty{color:var(--faint);font-size:13px;padding:6px 0}
 .chart svg{width:100%;height:auto;display:block}
@@ -304,19 +306,22 @@ ${sRows.length ? sRows.map(x => `<tr data-store="${esc(x.s)}" class="${F.store =
 </tbody></table></div></section>
 </div>`;
 // 記録
-const fil = {ng: r => r.fail > 0, low: r => r.rate != null && r.rate < D.judge[1][0], all: () => true}[F.rf];
+const hasCmt = r => { const x = D.res[r.id] || {}; return !!r.note || (x.f || []).some(a => a[1]) || (x.h || []).some(a => a[1]) || (x.m || []).length > 0; };
+const fil = {ng: r => r.fail > 0, low: r => r.rate != null && r.rate < D.judge[1][0], cmt: hasCmt, all: () => true}[F.rf] || (() => true);
 const list = recs.filter(fil).sort((a, b) => (b.date + b.sent) < (a.date + a.sent) ? -1 : 1);
 h += `<section class="card"><div class="chead"><h2>点検結果を読む <small class="num">${list.length}件（新しい順）</small></h2>
-<div class="seg" id="fRec"><button data-rf="ng" aria-pressed="${F.rf === 'ng'}">✕あり</button><button data-rf="low" aria-pressed="${F.rf === 'low'}">要注意以下</button><button data-rf="all" aria-pressed="${F.rf === 'all'}">すべて</button></div></div>
-${list.length ? list.slice(0, F.limit).map(recCard).join('') : '<div class="empty">該当する点検はありません</div>'}
+<div class="seg" id="fRec"><button data-rf="ng" aria-pressed="${F.rf === 'ng'}">✕あり</button><button data-rf="low" aria-pressed="${F.rf === 'low'}">要注意以下</button><button data-rf="cmt" aria-pressed="${F.rf === 'cmt'}">コメントあり</button><button data-rf="all" aria-pressed="${F.rf === 'all'}">すべて</button></div></div>
+${list.length ? list.slice(0, F.limit).map(r => recCard(r, F.rf === 'cmt')).join('') : '<div class="empty">該当する点検はありません</div>'}
 ${list.length > F.limit ? `<button class="more" id="more">さらに表示（残り${list.length - F.limit}件）</button>` : ''}</section>`;
 $('main').innerHTML = h;
 }
-function recCard(r){
-const res = D.res[r.id] || {f: [], h: []}, hs = res.h || [];
+function recCard(r, onlyCmt){
+const res0 = D.res[r.id] || {f: [], h: []}, keep = a => !onlyCmt || a[1];
+const res = {f: (res0.f || []).filter(keep)}, hs = (res0.h || []).filter(keep), ms = res0.m || [];
 const ji = judgeIdx(r.rate), cls = ['good', 'good', 'warn', 'bad'][ji] || '';
 return `<article class="rec ${cls}"><div class="rhead"><b>${esc(r.store)}</b><span class="score num" style="color:${color(r.rate)}">${pct(r.rate)}%</span>${judgePill(r.rate)}<span class="num">${slash(r.date)}</span><span>${esc(r.checker || '')}</span><span class="num">○${r.pass}${r.half ? ` △${r.half}` : ''} ✕${r.fail}${r.open ? ` 未${r.open}` : ''}</span></div>
 ${res.f.length || hs.length ? `<ul class="ng">${res.f.map(([i, c]) => `<li><span class="path">${esc(shortCat(D.items[i][1]))}／${esc(D.items[i][2])}</span>${esc(D.items[i][3])}${c ? `<span class="c">→ ${esc(c)}</span>` : ''}</li>`).join('')}${hs.map(([i, c]) => `<li class="hf"><span class="path">${esc(shortCat(D.items[i][1]))}／${esc(D.items[i][2])}</span>${esc(D.items[i][3])}${c ? `<span class="c hf">→ ${esc(c)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+${ms.length ? `<ul class="ng">${ms.map(([i, c]) => `<li class="cm"><span class="path">${esc(shortCat(D.items[i][1]))}／${esc(D.items[i][2])}</span>${esc(D.items[i][3])}<span class="c cm">→ ${esc(c)}</span></li>`).join('')}</ul>` : ''}
 ${r.note ? `<div class="rnote">総評：${esc(r.note)}</div>` : ''}
 ${r.folder ? `<div class="rfoot"><a href="${esc(r.folder)}" target="_blank" rel="noopener">写真フォルダを開く</a></div>` : ''}</article>`;
 }
