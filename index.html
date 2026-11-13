@@ -115,6 +115,8 @@ main{padding-block:6px 110px}
 .check-item{background:#fff;padding:12px 14px 12px 16px;display:flex;align-items:center;gap:12px;transition:background .15s}
 .check-item.checked{background:var(--g-row)}
 .check-item.failed{background:var(--red-row)}
+.check-item.partial{background:#fff8ec}
+.check-item.partial .check-box{background:var(--amber);border-color:var(--amber);font-size:12px}
 .check-item.na{background:#f7f8f7}
 .check-item.na .check-text{color:var(--sub);text-decoration:line-through}
 .check-box{width:26px;height:26px;border-radius:50%;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;font-size:14px;color:#fff;font-weight:700}
@@ -131,6 +133,8 @@ main{padding-block:6px 110px}
 .btn-score{width:36px;height:36px;border-radius:10px;border:1px solid var(--bd);background:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;color:#5d6861}
 .btn-score.pass{background:var(--g);border-color:var(--g);color:#fff}
 .btn-score.fail{background:var(--red);border-color:var(--red);color:#fff}
+.btn-score.half{background:var(--amber);border-color:var(--amber);color:#fff}
+@media (max-width:420px){.check-actions{gap:4px}.btn-score{width:33px;height:33px;font-size:13px}.check-item{gap:10px;padding-left:12px;padding-right:10px}.check-box{width:24px;height:24px}.comment-area{padding-left:46px}}
 .btn-score.cam svg{width:17px;height:17px}
 .btn-score.cam.has{border-color:var(--g-line);color:var(--g-d);background:var(--g-bg)}
 .btn-score:active{transform:scale(.92)}
@@ -196,6 +200,10 @@ main{padding-block:6px 110px}
 .low-item:last-child{border:none}
 .low-path{font-size:11px;color:var(--sub)}
 .low-text b{color:var(--red);margin-right:4px}
+.low-text b.h{color:var(--amber)}
+.memo-card{margin-top:16px}
+.memo-card h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.memo-card h3 small{font-size:11px;font-weight:400;color:var(--sub)}
 .low-cmt{font-size:12px;color:var(--red-d);margin-top:2px}
 .note-ta{width:100%;border:1px solid var(--bd);border-radius:10px;padding:10px;font-size:13px;min-height:76px;resize:vertical;background:#fff}
 .export-btns{display:flex;gap:8px;margin-top:20px}
@@ -409,15 +417,16 @@ const tone = c => PAL[String(c || '').toLowerCase()] || c;
 function colorOf(cat){ return tone((cats().find(c => c.cat === cat) || {}).color) || '#7a867e'; }
 /* ===== 採点 ===== */
 function tally(items){
-let pass = 0, fail = 0, na = 0, open = 0, wp = 0, wt = 0;
+let pass = 0, half = 0, fail = 0, na = 0, open = 0, wp = 0, wt = 0;
 items.forEach(i => {
 const st = S.res[i.id]?.s, w = Number(i.weight) || 1;
 if (st === 'p'){ pass++; wp += w; wt += w; }
+else if (st === 'h'){ half++; wp += w / 2; wt += w; }   // △は配点の半分
 else if (st === 'f'){ fail++; wt += w; }
 else if (st === 'n') na++;
 else open++;
 });
-return { pass, fail, na, open, total: items.length, rate: wt ? wp / wt : null };
+return { pass, half, fail, na, open, total: items.length, rate: wt ? wp / wt : null };
 }
 function allItems(){ return cats().flatMap(c => visible(c.cat)); }
 const pctTxt = r => r == null ? '--' : (Math.round(r * 1000) / 10).toFixed(1);
@@ -456,8 +465,8 @@ $('tabs').querySelector('.active')?.scrollIntoView({block: 'nearest', inline: 'n
 const ICON_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 function itemHTML(i, n){
 const r = S.res[i.id] || {}, ph = r.photos || [];
-const cls = {p: 'checked', f: 'failed', n: 'na'}[r.s] || '';
-const box = {p: '✓', f: '✕', n: '−'}[r.s] || '';
+const cls = {p: 'checked', h: 'partial', f: 'failed', n: 'na'}[r.s] || '';
+const box = {p: '✓', h: '△', f: '✕', n: '−'}[r.s] || '';
 const marks = (r.c ? '<span>メモあり</span>' : '') + (ph.length ? `<span>写真${ph.length}枚</span>` : '');
 return `<div class="row" data-id="${esc(i.id)}">
 <div class="check-item ${cls}">
@@ -465,16 +474,21 @@ return `<div class="row" data-id="${esc(i.id)}">
 <div class="check-text" data-act="cmt" role="button" tabindex="0" aria-expanded="${OPEN.has(i.id)}"><span class="check-no">${n}.</span>${esc(i.text)}${Number(i.weight) > 1 ? `<span class="tag w">配点${i.weight}</span>` : ''}${i.adhoc ? '<span class="tag">今回のみ</span>' : ''}${marks ? `<div class="marks">${marks}</div>` : ''}</div>
 <div class="check-actions">
 <button class="btn-score${r.s === 'p' ? ' pass' : ''}" data-v="p" aria-label="○" aria-pressed="${r.s === 'p'}">○</button>
+<button class="btn-score${r.s === 'h' ? ' half' : ''}" data-v="h" aria-label="△" aria-pressed="${r.s === 'h'}">△</button>
 <button class="btn-score${r.s === 'f' ? ' fail' : ''}" data-v="f" aria-label="✕" aria-pressed="${r.s === 'f'}">✕</button>
 <label class="btn-score cam${ph.length ? ' has' : ''}" aria-label="写真を追加">${ICON_CAM}<input type="file" accept="image/*" multiple hidden data-act="photo"></label>
 </div>
 </div>
 <div class="comment-area${OPEN.has(i.id) ? ' show' : ''}">
-<textarea data-act="cmtIn" placeholder="${r.s === 'f' ? '✕の理由・改善指示など' : 'コメント（商品名など）'}" aria-label="コメント">${esc(r.c || '')}</textarea>
+<textarea data-act="cmtIn" placeholder="${r.s === 'f' ? '✕の理由・改善指示など' : r.s === 'h' ? '△の理由（どこが惜しいか）など' : 'コメント（商品名など）'}" aria-label="コメント">${esc(r.c || '')}</textarea>
 ${ph.length ? `<div class="thumbs">${ph.map(p => `<button data-act="viewPhoto" data-pid="${esc(p)}"><img alt="写真" src="${thumbs[p] || ''}" data-pid="${esc(p)}"></button>`).join('')}</div>` : ''}
 <div class="crow2"><button class="mini${r.s === 'n' ? ' on' : ''}" data-v="n">${r.s === 'n' ? '対象外を解除' : '対象外にする'}</button><button class="mini" data-act="itemEdit">文面を直す・削除</button></div>
 </div>
 </div>`;
+}
+// 全体の総評メモ：どのタブの一番下にも出す（中身は1つで共通）
+function memoCard(){
+return `<div class="summary-card memo-card"><h3>全体の総評メモ<small>どのタブから書いても同じメモです</small></h3><textarea class="note-ta" data-act="note" placeholder="お店全体の印象、店長へのフィードバック、次回までの宿題など" aria-label="全体の総評メモ">${esc(S.meta.note || '')}</textarea></div>`;
 }
 function nextTab(cat){
 const list = cats().filter(c => visible(c.cat).length);
@@ -496,6 +510,7 @@ h += `</div></div>`;
 h += `<button class="concept-add-btn" data-act="openAdd" data-cat="${esc(cat)}">＋ 項目を追加（この点検のみ）</button>`;
 h += `<button class="concept-add-btn edit-all" data-act="menuEdit">✎ 項目の文面修正・削除・追加（全店共通）</button>`;
 if (t.open && items.length) h += `<button class="link-btn" data-act="allPass" data-cat="${esc(cat)}">未チェック${t.open}件をまとめて○にする</button>`;
+if (items.length) h += memoCard();
 const next = nextTab(cat);
 h += `<div class="export-btns"><button class="export-btn" data-tab="${esc(next)}">${next === '__sum' ? '集計・送信へ' : `次へ（${esc(shortName(next))}）`}</button><button class="export-btn secondary" data-act="reset">リセット</button></div>`;
 return h;
@@ -527,7 +542,7 @@ return `<div class="summary-card done-card"><div class="mark">✓</div><h3>送�
 const prev = (HIST[m.store] || []).filter(x => x.recordId !== S.recordId).slice(-1)[0];
 let h = `<div class="summary-card"><h3>総合スコア</h3>
 <div class="big-ring" style="--p:${t.rate == null ? 0 : Math.round(t.rate * 1000) / 10}"><div class="big-score">${t.rate == null ? '--' : pctTxt(t.rate)}<small>%</small></div></div>
-<div class="big-sub">${t.pass} / ${t.pass + t.fail} 項目合格${t.na ? `　対象外 ${t.na}` : ''}${t.open ? `　未チェック ${t.open}` : ''}</div>
+<div class="big-sub">○${t.pass}　△${t.half}　✕${t.fail}${t.na ? `　対象外 ${t.na}` : ''}${t.open ? `　未チェック ${t.open}` : ''}</div>
 ${prev ? `<div class="prev">前回 ${pctTxt(prev.rate)}%（${esc(prev.date)}）${t.rate != null ? `<span class="delta ${t.rate >= prev.rate ? 'up' : 'down'}">${t.rate >= prev.rate ? '+' : ''}${pctTxt(t.rate - prev.rate)}</span>` : ''}</div>` : ''}
 </div>`;
 if (t.open){
@@ -543,15 +558,15 @@ h += `<div class="summary-row"><span class="summary-label">${esc(shortName(c.cat
 <span class="summary-score" style="color:${esc(c.color)}">${ct.rate == null ? '--' : pctTxt(ct.rate)}%</span><span class="summary-cnt">${ct.pass}/${ct.total - ct.na}</span></div>`;
 });
 h += `</div>`;
-const ng = all.filter(i => S.res[i.id]?.s === 'f');
-h += `<div class="summary-card"><h3 class="low">低評価項目一覧（${ng.length}件）</h3>`;
-if (!ng.length) h += `<div class="low-item" style="color:#999">✕の項目はありません</div>`;
+const ng = all.filter(i => S.res[i.id]?.s === 'f').concat(all.filter(i => S.res[i.id]?.s === 'h'));
+h += `<div class="summary-card"><h3 class="low">低評価項目一覧（✕${t.fail}件・△${t.half}件）</h3>`;
+if (!ng.length) h += `<div class="low-item" style="color:#999">✕・△の項目はありません</div>`;
 ng.forEach(i => {
-const r = S.res[i.id];
-h += `<div class="low-item"><div class="low-path">${esc(i.cat)} &gt; ${esc(i.sub)}</div><div class="low-text"><b>✕</b>${esc(i.text)}</div>${r.c ? `<div class="low-cmt">${esc(r.c)}</div>` : ''}
+const r = S.res[i.id], hf = r.s === 'h';
+h += `<div class="low-item"><div class="low-path">${esc(i.cat)} &gt; ${esc(i.sub)}</div><div class="low-text"><b class="${hf ? 'h' : ''}">${hf ? '△' : '✕'}</b>${esc(i.text)}</div>${r.c ? `<div class="low-cmt">${esc(r.c)}</div>` : ''}
 ${(r.photos || []).length ? `<div class="thumbs">${r.photos.map(p => `<button data-act="viewPhoto" data-pid="${esc(p)}"><img alt="写真" src="${thumbs[p] || ''}" data-pid="${esc(p)}"></button>`).join('')}</div>` : ''}</div>`;
 });
-h += `</div><div class="summary-card"><h3>総評</h3><textarea class="note-ta" id="mNote" placeholder="店長へのフィードバック、次回までの宿題など" aria-label="総評">${esc(m.note)}</textarea></div>`;
+h += `</div>` + memoCard();
 h += `<div class="export-btns"><button class="export-btn" data-act="send">${CFG.demo ? 'スプシに送信（デモ）' : 'スプシに送信'}</button><button class="export-btn secondary" data-act="copyReport">報告テキストをコピー</button></div><div id="copyFallback"></div>`;
 return h;
 }
@@ -667,9 +682,9 @@ const itemEl = t.closest('.row'); const id = itemEl?.dataset.id;
 if (t.dataset.v && id){
 const r = S.res[id] || (S.res[id] = {});
 r.s = r.s === t.dataset.v ? null : t.dataset.v;
-if (r.s === 'f') OPEN.add(id);
+if (r.s === 'f' || r.s === 'h') OPEN.add(id);
 save(); updateItem(id);
-if (r.s === 'f') document.querySelector(`.row[data-id="${CSS.escape(id)}"] textarea`)?.focus({preventScroll: true});
+if (r.s === 'f' || r.s === 'h') document.querySelector(`.row[data-id="${CSS.escape(id)}"] textarea`)?.focus({preventScroll: true});
 return;
 }
 const act = t.dataset.act;
@@ -721,7 +736,7 @@ document.addEventListener('input', ev => {
 const t = ev.target;
 if (t.dataset.act === 'cmtIn'){ const id = t.closest('.row').dataset.id; (S.res[id] = S.res[id] || {}).c = t.value; save(); return; }
 if (t.id === 'mChecker'){ S.meta.checker = t.value; save(); renderHeader(); return; }
-if (t.id === 'mNote'){ S.meta.note = t.value; save(); return; }
+if (t.dataset.act === 'note'){ S.meta.note = t.value; save(); return; }
 if (!E) return;
 const eid = t.closest('.eitem')?.dataset.id; const r = eid && E.find(x => x.id === eid);
 if (r && t.dataset.act === 'eText') r.text = t.value;
@@ -817,11 +832,11 @@ delete S.uploaded[pid]; await PH.del(pid); delete thumbs[pid]; save(); o.hidden 
 /* ===== 送信 ===== */
 function buildPayload(){
 const all = allItems(), t = tally(all);
-const map = {p: '○', f: '✕', n: '対象外'};
+const map = {p: '○', h: '△', f: '✕', n: '対象外'};
 return {
 recordId: S.recordId, meta: S.meta, folderUrl: S.folderUrl,
-total: {rate: t.rate ?? '', pass: t.pass, fail: t.fail, na: t.na, open: t.open},
-cats: cats().filter(c => visible(c.cat).length).map(c => { const x = tally(visible(c.cat)); return {cat: c.cat, pass: x.pass, fail: x.fail, na: x.na, open: x.open, rate: x.rate ?? ''}; }),
+total: {rate: t.rate ?? '', pass: t.pass, half: t.half, fail: t.fail, na: t.na, open: t.open},
+cats: cats().filter(c => visible(c.cat).length).map(c => { const x = tally(visible(c.cat)); return {cat: c.cat, pass: x.pass, half: x.half, fail: x.fail, na: x.na, open: x.open, rate: x.rate ?? ''}; }),
 items: all.map(i => { const r = S.res[i.id] || {}; return {id: i.id, cat: i.cat, sub: i.sub, text: i.text + (i.adhoc ? '（今回のみ）' : ''), weight: Number(i.weight) || 1, result: map[r.s] || '未チェック', comment: r.c || '', photos: (r.photos || []).map(p => S.uploaded[p]?.url).filter(Boolean)}; }),
 };
 }
@@ -856,10 +871,12 @@ function reportText(){
 const all = allItems(), t = tally(all), m = S.meta;
 const prev = (HIST[m.store] || []).filter(h => h.recordId !== S.recordId).slice(-1)[0];
 let s = `【QSCチェック】${m.store}${m.genre ? `（${m.genre}）` : ''}\n${m.date}　チェック者：${m.checker}\n総合得点率 ${pctTxt(t.rate)}%${prev ? `（前回 ${pctTxt(prev.rate)}%）` : ''}\n`;
-cats().forEach(c => { const its = visible(c.cat); if (!its.length) return; const x = tally(its); s += `・${c.cat} ${pctTxt(x.rate)}%（✕${x.fail}）\n`; });
+cats().forEach(c => { const its = visible(c.cat); if (!its.length) return; const x = tally(its); s += `・${c.cat} ${pctTxt(x.rate)}%（✕${x.fail}${x.half ? ` △${x.half}` : ''}）\n`; });
 const ng = all.filter(i => S.res[i.id]?.s === 'f');
 s += `\n✕の項目 ${ng.length}件\n`;
 ng.forEach(i => { const c = S.res[i.id].c; s += `・[${i.cat.split(/[＝=]/)[0]}/${i.sub}] ${i.text}${c ? `\n　→ ${c}` : ''}\n`; });
+const hf = all.filter(i => S.res[i.id]?.s === 'h');
+if (hf.length){ s += `\n△の項目 ${hf.length}件\n`; hf.forEach(i => { const c = S.res[i.id].c; s += `・[${i.cat.split(/[＝=]/)[0]}/${i.sub}] ${i.text}${c ? `\n　→ ${c}` : ''}\n`; }); }
 if (t.open) s += `\n※未チェック ${t.open}件\n`;
 if (m.note) s += `\n総評：${m.note}\n`;
 return s;

@@ -106,8 +106,19 @@ main{padding-block:8px 60px;display:flex;flex-direction:column;gap:16px}
 .bar .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar .tr{height:9px;border-radius:5px;background:var(--line2);overflow:hidden}
 .bar .tr i{display:block;height:100%;border-radius:5px}
+.bar .tr.two{display:flex}
+.bar .tr.two i{border-radius:0}
 .bar .vv{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}
-.bar.wide{grid-template-columns:minmax(0,16em) minmax(40px,1fr) 5.4em}
+.bar.wide{grid-template-columns:minmax(0,1fr) auto;row-gap:5px;column-gap:12px;padding:6px 0;border-bottom:1px solid var(--line2)}
+.bar.wide:last-child{border-bottom:0}
+.bar.wide .nm{grid-column:1;grid-row:1;white-space:normal;overflow:visible;line-height:1.45}
+.bar.wide .pth{display:inline-block;font-size:11px;color:var(--faint);margin-right:6px;font-weight:600}
+.bar.wide .tr{grid-column:1/-1;grid-row:2}
+.bar.wide .vv{grid-column:2;grid-row:1;align-self:start;color:var(--ink);font-weight:700}
+.bar.wide .vv .h{color:var(--gold);margin-left:4px}
+.bar .tr .hf{display:inline-block;height:100%;background:var(--gold)}
+.ng li.hf::before{content:"△";color:var(--gold)}
+.ng .c.hf{color:var(--warn)}
 .empty{color:var(--faint);font-size:13px;padding:6px 0}
 .chart svg{width:100%;height:auto;display:block}
 .chart text{font-size:11px;fill:var(--muted);font-family:var(--font)}
@@ -241,19 +252,23 @@ const catRows = catNames.map(cn => ({cn, v: avg(cats.filter(c => c.cat === cn).m
 const it = {};
 recs.forEach(r => {
 const res = D.res[r.id]; if (!res) return;
-res.p.forEach(i => { (it[i] = it[i] || {ng: 0, n: 0, st: {}}).n++; });
-res.f.forEach(([i]) => { const o = (it[i] = it[i] || {ng: 0, n: 0, st: {}}); o.n++; o.ng++; o.st[r.store] = (o.st[r.store] || 0) + 1; });
+const get = i => (it[i] = it[i] || {ng: 0, hf: 0, n: 0, st: {}});
+res.p.forEach(i => { get(i).n++; });
+(res.h || []).forEach(([i]) => { const o = get(i); o.n++; o.hf++; o.st[r.store] = (o.st[r.store] || 0) + 1; });
+res.f.forEach(([i]) => { const o = get(i); o.n++; o.ng++; o.st[r.store] = (o.st[r.store] || 0) + 1; });
 });
-const ngTop = Object.keys(it).map(i => ({i: +i, ...it[i]})).filter(o => o.ng).sort((a, b) => b.ng - a.ng || b.ng / b.n - a.ng / a.n).slice(0, 10);
-const okTop = Object.keys(it).map(i => ({i: +i, ...it[i]})).filter(o => o.n >= 2).sort((a, b) => (a.ng / a.n) - (b.ng / b.n) || b.n - a.n).slice(0, 6);
-const maxNg = Math.max(1, ...ngTop.map(o => o.ng));
+const okRate = o => (o.n - o.ng - o.hf / 2) / o.n;   // △は半分の得点
+const ngTop = Object.keys(it).map(i => ({i: +i, ...it[i]})).filter(o => o.ng || o.hf).sort((a, b) => b.ng - a.ng || b.hf - a.hf || b.ng / b.n - a.ng / a.n).slice(0, 10);
+const okTop = Object.keys(it).map(i => ({i: +i, ...it[i]})).filter(o => o.n >= 2).sort((a, b) => okRate(b) - okRate(a) || b.n - a.n).slice(0, 6);
+const maxNg = Math.max(1, ...ngTop.map(o => o.ng + o.hf));
+const itemLbl = i => `<span class="nm"><span class="pth">${esc(shortCat(D.items[i][1]))}／${esc(D.items[i][2])}</span>${esc(D.items[i][3])}</span>`;
 h += `<section class="card"><div class="chead"><h2>カテゴリ別スコアと課題</h2><span class="note num">点検 ${recs.length}件から</span></div>
 <div class="cols2">
 <div><div class="subh g">カテゴリ別の平均得点率</div><div class="bars">${catRows.length ? catRows.map(x => `<div class="bar"><span class="nm">${esc(x.cn)}</span><span class="tr"><i style="width:${(x.v ?? 0) * 100}%;background:${color(x.v)}"></i></span><span class="vv">${pct(x.v)}%</span></div>`).join('') : '<div class="empty">この期間の点検はまだありません</div>'}</div>
-${okTop.length ? `<div class="subh g" style="margin-top:18px">よくできている項目</div><div class="bars">${okTop.map(o => `<div class="bar wide"><span class="nm" title="${esc(D.items[o.i][3])}">${esc(D.items[o.i][3])}</span><span class="tr"><i style="width:${(1 - o.ng / o.n) * 100}%;background:var(--good)"></i></span><span class="vv">${Math.round((1 - o.ng / o.n) * 100)}%</span></div>`).join('')}</div>` : ''}
+${okTop.length ? `<div class="subh g" style="margin-top:18px">よくできている項目</div><div class="bars">${okTop.map(o => `<div class="bar wide">${itemLbl(o.i)}<span class="tr"><i style="width:${okRate(o) * 100}%;background:var(--good)"></i></span><span class="vv num">${Math.round(okRate(o) * 100)}%</span></div>`).join('')}</div>` : ''}
 </div>
-<div><div class="subh b">✕が多い項目（よく指摘されていること）</div><div class="bars">${ngTop.length ? ngTop.map(o => `<div class="bar wide"><span class="nm" title="${esc(D.items[o.i][3])}">${esc(D.items[o.i][3])}</span><span class="tr" style="background:var(--bad-soft)"><i style="width:${o.ng / maxNg * 100}%;background:var(--bad)"></i></span><span class="vv">${o.ng}件</span></div>`).join('') : '<div class="empty">✕はありません</div>'}</div>
-${ngTop.length ? `<p class="note" style="font-size:12px;color:var(--muted);margin-top:10px">いちばん多いのは「${esc(D.items[ngTop[0].i][3])}」。${Object.keys(ngTop[0].st).length}店で${ngTop[0].ng}回指摘されています。</p>` : ''}
+<div><div class="subh b">✕・△が多い項目（よく指摘されていること）</div><div class="bars">${ngTop.length ? ngTop.map(o => `<div class="bar wide">${itemLbl(o.i)}<span class="tr two" style="background:var(--bad-soft)"><i style="width:${o.ng / maxNg * 100}%;background:var(--bad)"></i><i style="width:${o.hf / maxNg * 100}%;background:var(--gold)"></i></span><span class="vv num">✕${o.ng}${o.hf ? `<span class="h">△${o.hf}</span>` : ''}</span></div>`).join('') : '<div class="empty">✕・△はありません</div>'}</div>
+${ngTop.length ? `<p class="note" style="font-size:12px;color:var(--muted);margin-top:10px">いちばん多いのは「${esc(D.items[ngTop[0].i][3])}」。${Object.keys(ngTop[0].st).length}店で${ngTop[0].ng + ngTop[0].hf}回指摘されています${ngTop[0].hf ? `（✕${ngTop[0].ng}・△${ngTop[0].hf}）` : ''}。</p>` : ''}
 </div>
 </div></section>`;
 // 推移 + 判定分布
@@ -298,10 +313,10 @@ ${list.length > F.limit ? `<button class="more" id="more">さらに表示（残�
 $('main').innerHTML = h;
 }
 function recCard(r){
-const res = D.res[r.id] || {f: []};
+const res = D.res[r.id] || {f: [], h: []}, hs = res.h || [];
 const ji = judgeIdx(r.rate), cls = ['good', 'good', 'warn', 'bad'][ji] || '';
-return `<article class="rec ${cls}"><div class="rhead"><b>${esc(r.store)}</b><span class="score num" style="color:${color(r.rate)}">${pct(r.rate)}%</span>${judgePill(r.rate)}<span class="num">${slash(r.date)}</span><span>${esc(r.checker || '')}</span><span class="num">○${r.pass} ✕${r.fail}${r.open ? ` 未${r.open}` : ''}</span></div>
-${res.f.length ? `<ul class="ng">${res.f.map(([i, c]) => `<li><span class="path">${esc(shortCat(D.items[i][1]))}／${esc(D.items[i][2])}</span>${esc(D.items[i][3])}${c ? `<span class="c">→ ${esc(c)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+return `<article class="rec ${cls}"><div class="rhead"><b>${esc(r.store)}</b><span class="score num" style="color:${color(r.rate)}">${pct(r.rate)}%</span>${judgePill(r.rate)}<span class="num">${slash(r.date)}</span><span>${esc(r.checker || '')}</span><span class="num">○${r.pass}${r.half ? ` △${r.half}` : ''} ✕${r.fail}${r.open ? ` 未${r.open}` : ''}</span></div>
+${res.f.length || hs.length ? `<ul class="ng">${res.f.map(([i, c]) => `<li><span class="path">${esc(shortCat(D.items[i][1]))}／${esc(D.items[i][2])}</span>${esc(D.items[i][3])}${c ? `<span class="c">→ ${esc(c)}</span>` : ''}</li>`).join('')}${hs.map(([i, c]) => `<li class="hf"><span class="path">${esc(shortCat(D.items[i][1]))}／${esc(D.items[i][2])}</span>${esc(D.items[i][3])}${c ? `<span class="c hf">→ ${esc(c)}</span>` : ''}</li>`).join('')}</ul>` : ''}
 ${r.note ? `<div class="rnote">総評：${esc(r.note)}</div>` : ''}
 ${r.folder ? `<div class="rfoot"><a href="${esc(r.folder)}" target="_blank" rel="noopener">写真フォルダを開く</a></div>` : ''}</article>`;
 }
@@ -362,7 +377,7 @@ $('main').innerHTML = `<div class="card">読み込めませんでした。少し
 }
 function normalize(d){
 return {now: d.now, demo: !!d.demo, judge: d.judge, items: d.items, res: d.res,
-recs: d.recs.map(a => ({id: a[0], date: a[1], store: a[2], genre: a[3], brand: a[4], checker: a[5], rate: a[6], pass: a[7], fail: a[8], na: a[9], open: a[10], note: a[11], folder: a[12], sent: a[13] || ''})).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.date)),
+recs: d.recs.map(a => ({id: a[0], date: a[1], store: a[2], genre: a[3], brand: a[4], checker: a[5], rate: a[6], pass: a[7], fail: a[8], na: a[9], open: a[10], note: a[11], folder: a[12], sent: a[13] || '', half: a[14] || 0})).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.date)),
 cats: d.cats.map(a => ({id: a[0], cat: a[1], rate: a[2]}))};
 }
 function showGate(wrong){
